@@ -26,21 +26,18 @@ services:
         condition: service_healthy
 
   web:
-    image: caddy:2-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./public:/srv/public:ro
-      - caddy_data:/data
-      - caddy_config:/config
+      - "127.0.0.1:3011:3000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:
-  caddy_data:
-  caddy_config:

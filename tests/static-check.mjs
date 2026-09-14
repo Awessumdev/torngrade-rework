@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const mode = process.argv.includes('--lint') ? 'lint' : 'typecheck';
-const roots = ['src', 'tests', 'public'];
+const roots = ['src', 'tests', 'public', 'app'];
 
 function walk(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
