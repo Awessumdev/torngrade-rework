@@ -93,6 +93,50 @@ dt {
   font-weight: 720;
 }
 
+.login-panel {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.login-panel label,
+.auth-message {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.login-panel input {
+  width: 100%;
+  height: 38px;
+  color: var(--text);
+  background: #101214;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0 10px;
+}
+
+.login-panel button {
+  min-height: 38px;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.login-panel button[type="submit"] {
+  color: #08110c;
+  background: var(--green);
+  border-color: var(--green);
+  font-weight: 800;
+}
+
+.auth-message.error {
+  color: var(--red);
+}
+
 .category {
   width: 100%;
   min-height: 42px;

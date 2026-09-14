@@ -15,9 +15,9 @@ export default function Page() {
       ),
       React.createElement(
         'div',
-        { className: 'wallet-panel', 'aria-label': 'Wallet balance' },
-        React.createElement('span', null, 'Production API'),
-        React.createElement('strong', null, 'Online'),
+        { className: 'wallet-panel', 'aria-label': 'Account panel' },
+        React.createElement('span', { id: 'sessionStatus' }, 'Not signed in'),
+        React.createElement('strong', { id: 'walletBalance' }, '0.00 XAN'),
       ),
     ),
     React.createElement(
@@ -27,6 +27,15 @@ export default function Page() {
         'aside',
         { className: 'categories', 'aria-label': 'Categories' },
         React.createElement('div', { className: 'section-title' }, 'Categories'),
+        React.createElement(
+          'form',
+          { id: 'tornLoginForm', className: 'login-panel' },
+          React.createElement('label', null, 'Torn API Key'),
+          React.createElement('input', { id: 'tornApiKey', type: 'password', autoComplete: 'off', placeholder: 'Paste key' }),
+          React.createElement('button', { type: 'submit' }, 'Sign in'),
+          React.createElement('button', { id: 'logoutButton', type: 'button', hidden: true }, 'Logout'),
+          React.createElement('div', { id: 'authMessage', className: 'auth-message' }),
+        ),
         ['Politics', 'Sports', 'Crypto', 'Culture'].map((category, index) => React.createElement(
           'button',
           {
@@ -47,7 +56,7 @@ export default function Page() {
           React.createElement(
             'div',
             null,
-            React.createElement('h1', { id: 'categoryTitle' }, 'Politics'),
+            React.createElement('h1', { id: 'categoryTitle' }, 'Markets'),
             React.createElement('p', null, 'Select an outcome to open the bet slip'),
           ),
           React.createElement('div', { className: 'status-pill' }, 'OPEN MARKETS'),

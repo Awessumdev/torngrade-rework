@@ -131,6 +131,20 @@ export async function verifyTornAuthRequest({
   const signature = headers.get('x-torn-signature');
   const timestamp = headers.get('x-torn-timestamp');
   const hasSignature = Boolean(signature || timestamp);
+  const apiKey = extractTornApiKey(body);
+
+  if (apiKey) {
+    if (hasSignature) {
+      verifyTornCallbackSignature({
+        rawBody,
+        timestamp,
+        signature,
+        secret: callbackSecret,
+        now,
+      });
+    }
+    return verifyTornApiIdentity({ apiKey, fetchImpl });
+  }
 
   if (requireSignature || hasSignature) {
     verifyTornCallbackSignature({
@@ -140,11 +154,6 @@ export async function verifyTornAuthRequest({
       secret: callbackSecret,
       now,
     });
-  }
-
-  const apiKey = extractTornApiKey(body);
-  if (apiKey) {
-    return verifyTornApiIdentity({ apiKey, fetchImpl });
   }
 
   if (hasSignature) {

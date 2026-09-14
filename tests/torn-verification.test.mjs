@@ -63,6 +63,20 @@ test('accepts Torn auth request after server-side API verification', async () =>
   assert.deepEqual(identity, { externalTornId: '98765', username: 'ApiUser' });
 });
 
+test('production signature requirement still allows server-side Torn API key verification', async () => {
+  const identity = await verifyTornAuthRequest({
+    rawBody: JSON.stringify({ apiKey: 'validKey123' }),
+    headers: headers(),
+    requireSignature: true,
+    fetchImpl: async () => ({
+      ok: true,
+      json: async () => ({ player_id: 777, name: 'ProductionUser' }),
+    }),
+  });
+
+  assert.deepEqual(identity, { externalTornId: '777', username: 'ProductionUser' });
+});
+
 test('verifies signed callback payload and rejects replay or tampering', () => {
   const rawBody = JSON.stringify({ externalTornId: '12345', username: 'SignedUser' });
   const timestamp = String(Date.parse('2026-09-14T12:00:00.000Z'));
