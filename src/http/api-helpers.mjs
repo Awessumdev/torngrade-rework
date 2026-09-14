@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from './prisma.mjs';
 import { ADMIN_ROLES } from '../auth/authorization.mjs';
+import {
+  assertRequestCsrf,
+  assertSessionType,
+  getSessionFromCookies,
+} from './session-auth.mjs';
 
 export class ApiError extends Error {
   constructor(status, code, message) {
@@ -14,6 +19,13 @@ export class ApiError extends Error {
 const PUBLIC_ERROR_STATUS = Object.freeze({
   USER_NOT_FOUND: 401,
   USER_NOT_ACTIVE: 403,
+  SESSION_REQUIRED: 401,
+  SESSION_EXPIRED: 401,
+  INVALID_SESSION: 401,
+  INVALID_SESSION_SIGNATURE: 401,
+  INVALID_SESSION_PAYLOAD: 401,
+  SESSION_TYPE_FORBIDDEN: 403,
+  CSRF_TOKEN_INVALID: 403,
   ADMIN_UNAUTHENTICATED: 401,
   ADMIN_FORBIDDEN: 403,
   CLIENT_FIELD_NOT_ALLOWED: 400,
@@ -83,7 +95,11 @@ export async function handleApi(handler) {
 }
 
 export async function requireUser(request, db = prisma) {
-  const userId = request.headers.get('x-user-id');
+  const session = await getSessionFromCookies('USER');
+  assertSessionType(session, 'USER');
+  assertRequestCsrf(request, session);
+
+  const userId = session.sub;
   if (!userId) {
     throw new ApiError(401, 'USER_NOT_FOUND', 'Authenticated user is required.');
   }
@@ -101,7 +117,11 @@ export async function requireUser(request, db = prisma) {
 }
 
 export async function requireAdmin(request, db = prisma) {
-  const adminId = request.headers.get('x-admin-id');
+  const session = await getSessionFromCookies('ADMIN');
+  assertSessionType(session, 'ADMIN');
+  assertRequestCsrf(request, session);
+
+  const adminId = session.sub;
   if (!adminId) {
     throw new ApiError(401, 'ADMIN_UNAUTHENTICATED', 'Authenticated admin is required.');
   }

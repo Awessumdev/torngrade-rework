@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
 export class RequestSecurityError extends Error {
   constructor(code, message) {
@@ -74,4 +74,8 @@ export function assertSecureRequest({ sessionToken, sessionSecret, csrfToken, ra
   assertCsrfToken({ session, csrfToken });
   rateLimiter?.check(rateLimitKey ?? session.sub);
   return session;
+}
+
+export function createCsrfToken() {
+  return randomBytes(32).toString('base64url');
 }
