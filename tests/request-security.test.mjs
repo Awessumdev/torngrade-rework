@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   assertStrongSharedSecret,
   assertSecureRequest,
@@ -84,6 +85,11 @@ test('system secret must be configured strongly before accepting internal deposi
     expected: 'a'.repeat(32),
     provided: 'a'.repeat(32),
   }));
+});
+
+test('internal system auth failures are public 401 responses, not masked 500s', () => {
+  const helper = readFileSync(new URL('../src/http/api-helpers.mjs', import.meta.url), 'utf8');
+  assert.match(helper, /SYSTEM_UNAUTHENTICATED:\s*401/);
 });
 
 test('shared API helper rate limits write-heavy endpoint buckets by client IP', () => {
