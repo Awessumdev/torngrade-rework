@@ -1,0 +1,5 @@
+torngrade.xyz, www.torngrade.xyz {
+	root * /srv/public
+	encode zstd gzip
+	file_server
+}
