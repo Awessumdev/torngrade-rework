@@ -1,9 +1,10 @@
 import { processVerifiedDeposit } from '../../../../src/wallet/deposit-pipeline.mjs';
-import { handleApi, json, readJson, requireSystemSecret } from '../../../../src/http/api-helpers.mjs';
+import { enforceRateLimit, handleApi, json, readJson, requireSystemSecret } from '../../../../src/http/api-helpers.mjs';
 import { prisma } from '../../../../src/http/prisma.mjs';
 
 export async function POST(request) {
   return handleApi(async () => {
+    enforceRateLimit(request, 'internalDeposit', 'verified-deposit');
     requireSystemSecret(request);
     const body = await readJson(request);
     const result = await processVerifiedDeposit(prisma, body);

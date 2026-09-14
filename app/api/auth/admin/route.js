@@ -1,11 +1,12 @@
 import { ADMIN_STATUS } from '../../../../src/auth/authorization.mjs';
 import { verifyPassword } from '../../../../src/auth/passwords.mjs';
-import { handleApi, json, readJson } from '../../../../src/http/api-helpers.mjs';
+import { enforceRateLimit, handleApi, json, readJson } from '../../../../src/http/api-helpers.mjs';
 import { prisma } from '../../../../src/http/prisma.mjs';
 import { buildSessionToken, setSessionCookie } from '../../../../src/http/session-auth.mjs';
 
 export async function POST(request) {
   return handleApi(async () => {
+    enforceRateLimit(request, 'auth', 'admin-login');
     const body = await readJson(request);
     const email = String(body.email ?? '').trim().toLowerCase();
     const password = String(body.password ?? '');

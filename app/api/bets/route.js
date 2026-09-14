@@ -1,6 +1,6 @@
 import { placeBet } from '../../../src/betting/bet-service.mjs';
 import { listUserBets } from '../../../src/users/user-bets.mjs';
-import { handleApi, json, parseTake, readJson, requireUser } from '../../../src/http/api-helpers.mjs';
+import { enforceRateLimit, handleApi, json, parseTake, readJson, requireUser } from '../../../src/http/api-helpers.mjs';
 import { prisma } from '../../../src/http/prisma.mjs';
 
 export async function GET(request) {
@@ -20,6 +20,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   return handleApi(async () => {
+    enforceRateLimit(request, 'financialWrite', 'bet-placement');
     const user = await requireUser(request);
     const body = await readJson(request);
     const result = await placeBet({ db: prisma, user, request: body });

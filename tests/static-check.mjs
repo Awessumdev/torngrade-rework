@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 
 const mode = process.argv.includes('--lint') ? 'lint' : 'typecheck';
 const roots = ['src', 'tests', 'public', 'app'];
+const rootFiles = ['middleware.js'];
 
 function walk(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -12,7 +13,10 @@ function walk(dir) {
   });
 }
 
-const files = roots.flatMap(walk).filter((file) => /\.(mjs|js)$/.test(file));
+const files = [
+  ...roots.flatMap(walk),
+  ...rootFiles,
+].filter((file) => /\.(mjs|js)$/.test(file));
 
 if (mode === 'typecheck') {
   for (const file of files) {

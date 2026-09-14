@@ -36,9 +36,14 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
       AUTH_SESSION_SECRET: ${AUTH_SESSION_SECRET}
-      TORN_AUTH_REQUIRE_SIGNATURE: ${TORN_AUTH_REQUIRE_SIGNATURE:-false}
+      TORN_AUTH_REQUIRE_SIGNATURE: ${TORN_AUTH_REQUIRE_SIGNATURE:-true}
       TORN_CALLBACK_SECRET: ${TORN_CALLBACK_SECRET}
       TORN_API_USER_URL: ${TORN_API_USER_URL:-https://api.torn.com/v2/user}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health | grep -q '\"ok\":true'"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
     depends_on:
       postgres:
         condition: service_healthy

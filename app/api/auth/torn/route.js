@@ -1,12 +1,13 @@
 import { authenticateTornIdentity } from '../../../../src/auth/authorization.mjs';
 import { verifyTornAuthRequest } from '../../../../src/auth/torn-verification.mjs';
-import { handleApi, json } from '../../../../src/http/api-helpers.mjs';
+import { enforceRateLimit, handleApi, json } from '../../../../src/http/api-helpers.mjs';
 import { prisma } from '../../../../src/http/prisma.mjs';
 import { buildSessionToken, setSessionCookie } from '../../../../src/http/session-auth.mjs';
 import { ensureUserWallet } from '../../../../src/wallet/wallet-views.mjs';
 
 export async function POST(request) {
   return handleApi(async () => {
+    enforceRateLimit(request, 'auth', 'torn-login');
     const rawBody = await request.text();
     const tornIdentity = await verifyTornAuthRequest({
       rawBody,

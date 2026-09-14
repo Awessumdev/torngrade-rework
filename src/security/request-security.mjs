@@ -69,6 +69,23 @@ export function createFixedWindowRateLimiter({ limit, windowMs, now = () => Date
   };
 }
 
+export function assertStrongSharedSecret({ expected, provided }) {
+  if (!expected || expected.length < 32 || provided !== expected) {
+    throw new RequestSecurityError('SYSTEM_UNAUTHENTICATED', 'Valid internal API secret is required.');
+  }
+}
+
+export function clientIpFromHeaders(headers) {
+  return headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || headers.get('x-real-ip')
+    || 'unknown';
+}
+
+export function enforceRateLimitForHeaders({ headers, limiter, keyPrefix }) {
+  const ip = clientIpFromHeaders(headers);
+  limiter.check(`${keyPrefix}:${ip}`);
+}
+
 export function assertSecureRequest({ sessionToken, sessionSecret, csrfToken, rateLimiter, rateLimitKey, now = new Date() }) {
   const session = verifySignedSession(sessionToken, sessionSecret, now);
   assertCsrfToken({ session, csrfToken });

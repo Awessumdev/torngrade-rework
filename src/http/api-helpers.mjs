@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server';
 import { prisma } from './prisma.mjs';
 import { ADMIN_ROLES } from '../auth/authorization.mjs';
 import {
+  assertStrongSharedSecret,
+  createFixedWindowRateLimiter,
+  enforceRateLimitForHeaders,
+} from '../security/request-security.mjs';
+import {
   assertRequestCsrf,
   assertSessionType,
   getSessionFromCookies,
@@ -62,6 +67,14 @@ const PUBLIC_ERROR_STATUS = Object.freeze({
   WITHDRAWAL_NOT_FOUND: 404,
   DEPOSIT_NOT_VERIFIED: 400,
   INVALID_EXTERNAL_TRANSACTION_ID: 400,
+  RATE_LIMIT_EXCEEDED: 429,
+  INVALID_TAKE: 400,
+});
+
+const RATE_LIMITS = Object.freeze({
+  auth: createFixedWindowRateLimiter({ limit: 20, windowMs: 60_000 }),
+  financialWrite: createFixedWindowRateLimiter({ limit: 30, windowMs: 60_000 }),
+  internalDeposit: createFixedWindowRateLimiter({ limit: 120, windowMs: 60_000 }),
 });
 
 export async function readJson(request) {
@@ -147,10 +160,16 @@ export async function requireAdmin(request, db = prisma) {
 export function requireSystemSecret(request) {
   const expected = process.env.INTERNAL_API_SECRET;
   const provided = request.headers.get('x-internal-secret');
+  assertStrongSharedSecret({ expected, provided });
+}
 
-  if (!expected || provided !== expected) {
-    throw new ApiError(401, 'SYSTEM_UNAUTHENTICATED', 'Valid internal API secret is required.');
+export function enforceRateLimit(request, bucketName, keyPrefix = bucketName) {
+  const limiter = RATE_LIMITS[bucketName];
+  if (!limiter) {
+    throw new ApiError(500, 'UNKNOWN_RATE_LIMIT', 'Rate limit bucket is unknown.');
   }
+
+  enforceRateLimitForHeaders({ headers: request.headers, limiter, keyPrefix });
 }
 
 export function parseTake(searchParams, fallback = 50) {

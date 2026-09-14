@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import {
+  assertStrongSharedSecret,
   assertSecureRequest,
   createFixedWindowRateLimiter,
+  enforceRateLimitForHeaders,
   signSessionPayload,
   verifySignedSession,
 } from '../src/security/request-security.mjs';
@@ -69,6 +71,34 @@ test('secure request enforces csrf and rate limits', () => {
       now: new Date('2026-09-14T11:00:00.000Z'),
     }),
     (error) => error.code === 'CSRF_TOKEN_INVALID',
+  );
+});
+
+test('system secret must be configured strongly before accepting internal deposits', () => {
+  assert.throws(
+    () => assertStrongSharedSecret({ expected: 'short', provided: 'short' }),
+    (error) => error.code === 'SYSTEM_UNAUTHENTICATED',
+  );
+
+  assert.doesNotThrow(() => assertStrongSharedSecret({
+    expected: 'a'.repeat(32),
+    provided: 'a'.repeat(32),
+  }));
+});
+
+test('shared API helper rate limits write-heavy endpoint buckets by client IP', () => {
+  const limiter = createFixedWindowRateLimiter({ limit: 30, windowMs: 60_000, now: () => 1000 });
+  const request = {
+    headers: new Map([['x-forwarded-for', '203.0.113.10, 10.0.0.1']]),
+  };
+
+  for (let index = 0; index < 30; index += 1) {
+    enforceRateLimitForHeaders({ headers: request.headers, limiter, keyPrefix: 'test-write-bucket' });
+  }
+
+  assert.throws(
+    () => enforceRateLimitForHeaders({ headers: request.headers, limiter, keyPrefix: 'test-write-bucket' }),
+    (error) => error.code === 'RATE_LIMIT_EXCEEDED',
   );
 });
 

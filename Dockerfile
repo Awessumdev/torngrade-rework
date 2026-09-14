@@ -26,5 +26,6 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 
 EXPOSE 3000
+USER node
 
 CMD ["npm", "run", "start"]

@@ -1,6 +1,6 @@
 import { requestManualWithdrawal } from '../../../../src/withdrawals/withdrawal-service.mjs';
 import { listUserWithdrawals, serializeWallet } from '../../../../src/wallet/wallet-views.mjs';
-import { handleApi, json, parseTake, readJson, requireUser } from '../../../../src/http/api-helpers.mjs';
+import { enforceRateLimit, handleApi, json, parseTake, readJson, requireUser } from '../../../../src/http/api-helpers.mjs';
 import { prisma } from '../../../../src/http/prisma.mjs';
 
 export async function GET(request) {
@@ -20,6 +20,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   return handleApi(async () => {
+    enforceRateLimit(request, 'financialWrite', 'withdrawal-request');
     const user = await requireUser(request);
     const body = await readJson(request);
     const result = await requestManualWithdrawal({ db: prisma, user, request: body });
