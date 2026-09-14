@@ -3,6 +3,7 @@ import { verifyTornAuthRequest } from '../../../../src/auth/torn-verification.mj
 import { handleApi, json } from '../../../../src/http/api-helpers.mjs';
 import { prisma } from '../../../../src/http/prisma.mjs';
 import { buildSessionToken, setSessionCookie } from '../../../../src/http/session-auth.mjs';
+import { ensureUserWallet } from '../../../../src/wallet/wallet-views.mjs';
 
 export async function POST(request) {
   return handleApi(async () => {
@@ -12,6 +13,7 @@ export async function POST(request) {
       headers: request.headers,
     });
     const user = await authenticateTornIdentity({ db: prisma, tornIdentity });
+    await ensureUserWallet({ db: prisma, userId: user.id });
     const session = buildSessionToken({ subjectId: user.id, type: 'USER' });
     await setSessionCookie({ ...session, type: 'USER' });
     return json({
