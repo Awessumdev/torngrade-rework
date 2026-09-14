@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Torngrade Sportsbook</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <div class="brand">Torngrade</div>
+          <div class="subline">Fixed odds event markets</div>
+        </div>
+        <div class="wallet-panel" aria-label="Wallet balance">
+          <span>Balance</span>
+          <strong id="walletBalance">24.00 XAN</strong>
+        </div>
+      </header>
+
+      <main class="layout">
+        <aside class="categories" aria-label="Categories">
+          <div class="section-title">Categories</div>
+          <button class="category active" data-category="Politics">Politics</button>
+          <button class="category" data-category="Sports">Sports</button>
+          <button class="category" data-category="Crypto">Crypto</button>
+          <button class="category" data-category="Culture">Culture</button>
+        </aside>
+
+        <section class="markets-area" aria-label="Events and markets">
+          <div class="toolbar">
+            <div>
+              <h1 id="categoryTitle">Politics</h1>
+              <p>Open markets with server-side odds acceptance.</p>
+            </div>
+            <div class="status-pill">OPEN ONLY</div>
+          </div>
+
+          <div id="eventsList" class="events-list"></div>
+        </section>
+
+        <aside id="betSlip" class="bet-slip empty" aria-label="Bet slip">
+          <div class="slip-header">
+            <div>
+              <div class="section-title">Bet Slip</div>
+              <h2 id="slipTitle">Select an outcome</h2>
+            </div>
+            <button id="clearSlip" class="icon-button" title="Clear selection" aria-label="Clear selection">×</button>
+          </div>
+
+          <div id="emptySlip" class="empty-state">
+            Choose an outcome to build a stake preview.
+          </div>
+
+          <div id="activeSlip" class="slip-content" hidden>
+            <dl class="bet-details">
+              <div><dt>Event</dt><dd id="slipEvent"></dd></div>
+              <div><dt>Market</dt><dd id="slipMarket"></dd></div>
+              <div><dt>Outcome</dt><dd id="slipOutcome"></dd></div>
+              <div><dt>Current Odds</dt><dd id="slipOdds"></dd></div>
+            </dl>
+
+            <label class="stake-field">
+              <span>Stake</span>
+              <input id="stakeInput" type="number" min="1" max="1" step="1" value="1" inputmode="decimal" />
+              <em>XAN</em>
+            </label>
+
+            <div class="preview-grid">
+              <div>
+                <span>Potential Payout</span>
+                <strong id="previewPayout">0.00 XAN</strong>
+              </div>
+              <div>
+                <span>Potential Profit</span>
+                <strong id="previewProfit">0.00 XAN</strong>
+              </div>
+            </div>
+
+            <button id="placeBet" class="place-button">PLACE BET</button>
+
+            <div id="acceptedBet" class="accepted" hidden>
+              <div class="accepted-title">Bet accepted</div>
+              <dl>
+                <div><dt>Bet ID</dt><dd id="acceptedId"></dd></div>
+                <div><dt>Accepted Odds</dt><dd id="acceptedOdds"></dd></div>
+                <div><dt>Stake</dt><dd id="acceptedStake"></dd></div>
+                <div><dt>Potential Payout</dt><dd id="acceptedPayout"></dd></div>
+                <div><dt>Timestamp</dt><dd id="acceptedTimestamp"></dd></div>
+              </dl>
+            </div>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

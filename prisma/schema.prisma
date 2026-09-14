@@ -1,0 +1,425 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum WalletStatus {
+  ACTIVE
+  FROZEN
+  CLOSED
+}
+
+enum LedgerEntryType {
+  DEPOSIT
+  BET_STAKE
+  BET_WIN
+  BET_VOID_REFUND
+  WITHDRAWAL_REQUEST
+  WITHDRAWAL_REFUND
+  WITHDRAWAL_PAID
+  ADMIN_ADJUSTMENT
+}
+
+enum LedgerDirection {
+  CREDIT
+  DEBIT
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  LIVE
+  FINISHED
+  CANCELLED
+}
+
+enum MarketStatus {
+  DRAFT
+  OPEN
+  SUSPENDED
+  CLOSED
+  SETTLING
+  SETTLED
+  VOID
+}
+
+enum OutcomeStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum BetStatus {
+  OPEN
+  WON
+  LOST
+  VOID
+}
+
+enum SettlementStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum DepositStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum WithdrawalStatus {
+  REQUESTED
+  PENDING
+  PENDING_REVIEW
+  APPROVED
+  PROCESSING
+  PAID
+  FAILED
+  REJECTED
+  CANCELLED
+}
+
+enum WithdrawalPayoutMethod {
+  MANUAL
+}
+
+enum AdminStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum WhitelistStatus {
+  ACTIVE
+  REMOVED
+}
+
+enum AuditActorType {
+  USER
+  ADMIN
+  SYSTEM
+}
+
+enum ReconciliationStatus {
+  CLEAN
+  MISMATCH
+  FAILED
+}
+
+enum GlobalBettingStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+model User {
+  id          String   @id @default(uuid()) @db.Uuid
+  externalTornId String @unique
+  username    String
+  status      UserStatus @default(ACTIVE)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  wallet      Wallet?
+  whitelistEntries WhitelistEntry[]
+  ledgerEntries LedgerEntry[]
+  bets        Bet[]
+  deposits    Deposit[]
+  withdrawals Withdrawal[]
+  auditLogs   AuditLog[] @relation("UserAuditLogs")
+
+  @@index([status])
+  @@index([username])
+}
+
+model WhitelistEntry {
+  id             String @id @default(uuid()) @db.Uuid
+  userId         String @db.Uuid
+  status         WhitelistStatus @default(ACTIVE)
+  reason         String?
+  addedByAdminId String @db.Uuid
+  removedByAdminId String? @db.Uuid
+  createdAt      DateTime @default(now())
+  removedAt      DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  addedByAdmin AdminUser @relation("WhitelistAddedByAdmin", fields: [addedByAdminId], references: [id], onDelete: Restrict)
+  removedByAdmin AdminUser? @relation("WhitelistRemovedByAdmin", fields: [removedByAdminId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([status, createdAt])
+}
+
+model Wallet {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @unique @db.Uuid
+  currency         String   @default("XAN") @db.VarChar(16)
+  availableBalance Decimal  @default(0) @db.Decimal(36, 18)
+  pendingWithdrawal Decimal @default(0) @db.Decimal(36, 18)
+  status           WalletStatus @default(ACTIVE)
+  version          Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user          User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  ledgerEntries LedgerEntry[]
+
+  @@index([status])
+}
+
+model LedgerEntry {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @db.Uuid
+  walletId       String   @db.Uuid
+  currency       String   @db.VarChar(16)
+  type           LedgerEntryType
+  direction      LedgerDirection
+  amount         Decimal  @db.Decimal(36, 18)
+  balanceBefore  Decimal  @db.Decimal(36, 18)
+  balanceAfter   Decimal  @db.Decimal(36, 18)
+  referenceType  String   @db.VarChar(64)
+  referenceId    String   @db.Uuid
+  idempotencyKey String?  @db.VarChar(128)
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Restrict)
+  creditedDeposit Deposit? @relation("DepositCreditLedger")
+  paidWithdrawal Withdrawal? @relation("WithdrawalPaidLedger")
+  refundedWithdrawal Withdrawal? @relation("WithdrawalRefundLedger")
+
+  @@unique([type, referenceId])
+  @@unique([idempotencyKey])
+  @@index([userId, createdAt])
+  @@index([walletId, createdAt])
+  @@index([referenceType, referenceId])
+}
+
+model Event {
+  id          String   @id @default(uuid()) @db.Uuid
+  title       String
+  slug        String   @unique
+  description String?
+  category    String
+  startsAt    DateTime
+  status      EventStatus @default(DRAFT)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  markets Market[]
+  bets    Bet[]
+
+  @@index([status, startsAt])
+  @@index([category])
+}
+
+model Market {
+  id               String   @id @default(uuid()) @db.Uuid
+  eventId          String   @db.Uuid
+  question         String
+  description      String?
+  resolutionRules  String
+  resolutionSource String
+  voidConditions   String?
+  opensAt          DateTime
+  closesAt         DateTime
+  status           MarketStatus @default(DRAFT)
+  winningOutcomeId String? @unique @db.Uuid
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  settledAt        DateTime?
+
+  event          Event @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  outcomes       Outcome[] @relation("MarketOutcomes")
+  winningOutcome Outcome? @relation("WinningOutcome", fields: [winningOutcomeId], references: [id], onDelete: Restrict)
+  bets           Bet[]
+  settlement     Settlement?
+
+  @@index([eventId])
+  @@index([status, opensAt, closesAt])
+}
+
+model Outcome {
+  id        String   @id @default(uuid()) @db.Uuid
+  marketId  String   @db.Uuid
+  name      String
+  odds      Decimal  @db.Decimal(18, 8)
+  status    OutcomeStatus @default(ACTIVE)
+  sortOrder Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  market        Market @relation("MarketOutcomes", fields: [marketId], references: [id], onDelete: Restrict)
+  winningMarket Market? @relation("WinningOutcome")
+  settlements   Settlement[]
+  bets          Bet[]
+
+  @@unique([marketId, name])
+  @@unique([marketId, sortOrder])
+  @@index([marketId, status])
+}
+
+model Bet {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @db.Uuid
+  eventId         String   @db.Uuid
+  marketId        String   @db.Uuid
+  outcomeId       String   @db.Uuid
+  idempotencyKey  String   @db.VarChar(128)
+  stake           Decimal  @db.Decimal(36, 18)
+  oddsSnapshot    Decimal  @db.Decimal(18, 8)
+  potentialPayout Decimal  @db.Decimal(36, 18)
+  status          BetStatus @default(OPEN)
+  placedAt        DateTime @default(now())
+  settledAt       DateTime?
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Restrict)
+  event   Event   @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  market  Market  @relation(fields: [marketId], references: [id], onDelete: Restrict)
+  outcome Outcome @relation(fields: [outcomeId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId, placedAt])
+  @@index([marketId, status])
+  @@index([outcomeId, status])
+}
+
+model Settlement {
+  id               String   @id @default(uuid()) @db.Uuid
+  marketId         String   @unique @db.Uuid
+  winningOutcomeId String?  @db.Uuid
+  status           SettlementStatus @default(PROCESSING)
+  startedByAdminId String?  @db.Uuid
+  completedAt      DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  market         Market @relation(fields: [marketId], references: [id], onDelete: Restrict)
+  winningOutcome Outcome? @relation(fields: [winningOutcomeId], references: [id], onDelete: Restrict)
+  startedByAdmin AdminUser? @relation(fields: [startedByAdminId], references: [id], onDelete: SetNull)
+}
+
+model Deposit {
+  id                 String   @id @default(uuid()) @db.Uuid
+  userId             String   @db.Uuid
+  externalDepositId  String   @unique
+  providerEventId    String?  @unique
+  amount             Decimal  @db.Decimal(36, 18)
+  currency           String   @db.VarChar(16)
+  status             DepositStatus @default(PENDING)
+  creditedLedgerEntryId String? @unique @db.Uuid
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  completedAt        DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  creditedLedgerEntry LedgerEntry? @relation("DepositCreditLedger", fields: [creditedLedgerEntryId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
+model Withdrawal {
+  id                  String   @id @default(uuid()) @db.Uuid
+  userId              String   @db.Uuid
+  idempotencyKey      String   @db.VarChar(128)
+  externalWithdrawalId String? @unique
+  providerPayoutId    String? @unique
+  paidLedgerEntryId   String? @unique @db.Uuid
+  refundLedgerEntryId String? @unique @db.Uuid
+  amount              Decimal  @db.Decimal(36, 18)
+  currency            String   @db.VarChar(16)
+  status              WithdrawalStatus @default(PENDING)
+  payoutMethod        WithdrawalPayoutMethod @default(MANUAL)
+  requestedAt         DateTime @default(now())
+  approvedAt          DateTime?
+  paidAt              DateTime?
+  rejectedAt          DateTime?
+  updatedAt           DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  paidLedgerEntry LedgerEntry? @relation("WithdrawalPaidLedger", fields: [paidLedgerEntryId], references: [id], onDelete: Restrict)
+  refundLedgerEntry LedgerEntry? @relation("WithdrawalRefundLedger", fields: [refundLedgerEntryId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId, requestedAt])
+  @@index([status])
+}
+
+model AdminUser {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String
+  status       AdminStatus @default(ACTIVE)
+  roles        String[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  settlements Settlement[]
+  whitelistEntriesAdded WhitelistEntry[] @relation("WhitelistAddedByAdmin")
+  whitelistEntriesRemoved WhitelistEntry[] @relation("WhitelistRemovedByAdmin")
+  systemConfigsUpdated SystemConfig[] @relation("SystemConfigUpdatedByAdmin")
+  auditLogs   AuditLog[] @relation("AdminAuditLogs")
+
+  @@index([status])
+}
+
+model SystemConfig {
+  key                 String @id @default("production") @db.VarChar(64)
+  globalBettingStatus GlobalBettingStatus @default(ACTIVE)
+  betLimits           Json
+  updatedByAdminId    String? @db.Uuid
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  updatedByAdmin AdminUser? @relation("SystemConfigUpdatedByAdmin", fields: [updatedByAdminId], references: [id], onDelete: SetNull)
+
+  @@index([globalBettingStatus])
+}
+
+model AuditLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  actorType    AuditActorType
+  actorUserId  String?  @db.Uuid
+  actorAdminId String?  @db.Uuid
+  action       String   @db.VarChar(128)
+  resourceType String   @db.VarChar(64)
+  resourceId   String?  @db.Uuid
+  requestId    String?  @db.VarChar(128)
+  idempotencyKey String? @db.VarChar(128)
+  ipAddress    String?  @db.Inet
+  userAgent    String?
+  before       Json?
+  after        Json?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  actorUser  User? @relation("UserAuditLogs", fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorAdmin AdminUser? @relation("AdminAuditLogs", fields: [actorAdminId], references: [id], onDelete: SetNull)
+
+  @@index([actorType, createdAt])
+  @@index([resourceType, resourceId])
+  @@index([action, createdAt])
+}
+
+model ReconciliationSnapshot {
+  id              String   @id @default(uuid()) @db.Uuid
+  status          ReconciliationStatus
+  walletCount     Int
+  mismatchCount   Int
+  totalLedgerEntries Int
+  checkedAt       DateTime @default(now())
+  details         Json?
+
+  @@index([status, checkedAt])
+}
